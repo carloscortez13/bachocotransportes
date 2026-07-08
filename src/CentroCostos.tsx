@@ -16,7 +16,7 @@ interface FilaCentro {
   arriba: number;
   pctCumplimiento: number;
   dineroEnRiesgo: number;
-  casosARevisar: number;
+  costoTotal: number;
 }
 
 function CentroCostos({ onVolver }: Props) {
@@ -41,7 +41,7 @@ function CentroCostos({ onVolver }: Props) {
     setCargando(true);
     let query = supabase
       .from("vista_rendimiento")
-      .select("centro_costos, producto, litros, recorrido, rendimiento_estandar, costo_litro, cumplimiento, estado_transaccion");
+      .select("centro_costos, producto, litros, recorrido, rendimiento_estandar, costo_litro, costo_total, cumplimiento, estado_transaccion");
 
     if (fechaInicio) query = query.gte("fecha", fechaInicio);
     if (fechaFin) query = query.lte("fecha", fechaFin);
@@ -79,7 +79,7 @@ function CentroCostos({ onVolver }: Props) {
           arriba: 0,
           pctCumplimiento: 0,
           dineroEnRiesgo: 0,
-          casosARevisar: 0
+          costoTotal: 0
         };
       }
 
@@ -90,6 +90,9 @@ function CentroCostos({ onVolver }: Props) {
       const recorrido = parseFloat(row.recorrido) || 0;
       const estandar = parseFloat(row.rendimiento_estandar) || 0;
       const costoLitro = parseFloat(row.costo_litro) || 0;
+      const costoTotalFila = parseFloat(row.costo_total) || 0;
+
+      fila.costoTotal += costoTotalFila;
 
       if (row.cumplimiento === "OK") {
         fila.ok += 1;
@@ -105,7 +108,6 @@ function CentroCostos({ onVolver }: Props) {
         }
       } else if (row.cumplimiento === "POR ARRIBA") {
         fila.arriba += 1;
-        fila.casosARevisar += 1; // conteo, sin cifra en pesos (a propósito)
       }
     }
 
@@ -125,7 +127,7 @@ function CentroCostos({ onVolver }: Props) {
 
   const totalCargas = datos.length;
   const totalRiesgo = resumenPorCentro.reduce((a, f) => a + f.dineroEnRiesgo, 0);
-  const totalCasosRevisar = resumenPorCentro.reduce((a, f) => a + f.casosARevisar, 0);
+  const costoTotalGlobal = resumenPorCentro.reduce((a, f) => a + f.costoTotal, 0);
   const pctGlobalCumplimiento = totalCargas > 0
     ? (datos.filter(r => r.cumplimiento === "OK").length / totalCargas) * 100
     : 0;
@@ -221,8 +223,8 @@ function CentroCostos({ onVolver }: Props) {
           <h2 style={{ color: "#c0392b", margin: "8px 0 0", fontSize: "28px" }}>{fmtDinero(totalRiesgo)}</h2>
         </div>
         <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #f59e0b" }}>
-          <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Casos a Revisar</p>
-          <h2 style={{ color: "#f59e0b", margin: "8px 0 0", fontSize: "32px" }}>{totalCasosRevisar}</h2>
+          <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Costo Total</p>
+          <h2 style={{ color: "#f59e0b", margin: "8px 0 0", fontSize: "28px" }}>{fmtDinero(costoTotalGlobal)}</h2>
         </div>
         <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #8b5cf6" }}>
           <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Total Registros</p>
@@ -248,7 +250,7 @@ function CentroCostos({ onVolver }: Props) {
                     <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Por Arriba</th>
                     <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>% Cumplimiento</th>
                     <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>$ en Riesgo</th>
-                    <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Casos a Revisar</th>
+                    <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Costo Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -269,7 +271,7 @@ function CentroCostos({ onVolver }: Props) {
                       <td style={{ padding: "12px", color: fila.dineroEnRiesgo > 0 ? "#c0392b" : "#94a3b8", textAlign: "right" }}>
                         {fmtDinero(fila.dineroEnRiesgo)}
                       </td>
-                      <td style={{ padding: "12px", color: "#f59e0b", textAlign: "right" }}>{fila.casosARevisar}</td>
+                      <td style={{ padding: "12px", color: "#f1f5f9", textAlign: "right" }}>{fmtDinero(fila.costoTotal)}</td>
                     </tr>
                   ))}
                 </tbody>
