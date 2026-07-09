@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import CentroCostos from "./CentroCostos";
 import Unidades from "./Unidades";
+import Conductores from "./Conductores";
 
 const CENTROS_COSTOS = [
   "Postura Comercial Mexicali", "Ctos F Ind Post Rep Pesada", "Mntto",
@@ -569,6 +570,10 @@ function App() {
     return <Unidades onVolver={() => setModulo(null)} />;
   }
 
+  if (modulo === "conductores") {
+    return <Conductores onVolver={() => setModulo(null)} />;
+  }
+
   return (
     <div style={{ backgroundColor: "#0f172a", minHeight: "100vh", color: "white", fontFamily: "Arial, sans-serif" }}>
       <div style={{ backgroundColor: "#1e293b", padding: "16px 32px", display: "flex", alignItems: "center", gap: "12px", borderBottom: "2px solid #c0392b" }}>
@@ -590,6 +595,11 @@ function App() {
           <div style={{ fontSize: "32px" }}>🚚</div>
           <h2 style={{ color: "#f1f5f9", marginTop: "8px" }}>Unidades</h2>
           <p style={{ color: "#94a3b8" }}>Desempeño, choferes y centros de costos por vehículo.</p>
+        </div>
+        <div onClick={() => setModulo("conductores")} style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "24px", borderLeft: "4px solid #3b82f6", cursor: "pointer" }}>
+          <div style={{ fontSize: "32px" }}>👨‍✈️</div>
+          <h2 style={{ color: "#f1f5f9", marginTop: "8px" }}>Conductores</h2>
+          <p style={{ color: "#94a3b8" }}>Desempeño, unidades manejadas y desviación por chofer.</p>
         </div>
       </div>
     </div>
