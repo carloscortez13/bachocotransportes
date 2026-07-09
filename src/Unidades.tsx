@@ -20,6 +20,7 @@ interface FilaUnidad {
   conductores: Set<string>;
   centrosCostos: Set<string>;
   productos: Set<string>;
+  proveedores: Set<string>;
   fechaMasReciente: string;
 }
 
@@ -47,7 +48,7 @@ function Unidades({ onVolver }: Props) {
     setCargando(true);
     let query = supabase
       .from("vista_rendimiento")
-      .select("id_vehiculo, conductor, centro_costos, producto, fecha, litros, recorrido, rendimiento_estandar, rendimiento_real, costo_litro, costo_total, cumplimiento, estado_transaccion");
+      .select("id_vehiculo, conductor, centro_costos, producto, proveedor, fecha, litros, recorrido, rendimiento_estandar, rendimiento_real, costo_litro, costo_total, cumplimiento, estado_transaccion");
 
     if (fechaInicio) query = query.gte("fecha", fechaInicio);
     if (fechaFin) query = query.lte("fecha", fechaFin);
@@ -92,6 +93,7 @@ function Unidades({ onVolver }: Props) {
           conductores: new Set(),
           centrosCostos: new Set(),
           productos: new Set(),
+          proveedores: new Set(),
           fechaMasReciente: ""
         };
       }
@@ -115,6 +117,7 @@ function Unidades({ onVolver }: Props) {
       if (row.conductor) fila.conductores.add(row.conductor);
       if (row.centro_costos) fila.centrosCostos.add(row.centro_costos);
       if (row.producto) fila.productos.add(row.producto);
+      if (row.proveedor) fila.proveedores.add(row.proveedor);
 
       if (row.fecha && row.fecha >= fila.fechaMasReciente) {
         fila.fechaMasReciente = row.fecha;
@@ -333,7 +336,7 @@ function Unidades({ onVolver }: Props) {
                         {expandida && (
                           <tr style={{ backgroundColor: "#0f172a" }}>
                             <td colSpan={11} style={{ padding: "16px 24px" }}>
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "24px" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "24px" }}>
                                 <div>
                                   <p style={{ color: "#94a3b8", fontSize: "12px", margin: "0 0 8px", fontWeight: "bold" }}>
                                     Conductores en este periodo ({fila.conductores.size})
@@ -355,6 +358,14 @@ function Unidades({ onVolver }: Props) {
                                     Producto(s) usado(s)
                                   </p>
                                   {[...fila.productos].map(p => (
+                                    <p key={p} style={{ color: "#f1f5f9", fontSize: "13px", margin: "0 0 4px" }}>{p}</p>
+                                  ))}
+                                </div>
+                                <div>
+                                  <p style={{ color: "#94a3b8", fontSize: "12px", margin: "0 0 8px", fontWeight: "bold" }}>
+                                    Gasolinera(s) ({fila.proveedores.size})
+                                  </p>
+                                  {[...fila.proveedores].map(p => (
                                     <p key={p} style={{ color: "#f1f5f9", fontSize: "13px", margin: "0 0 4px" }}>{p}</p>
                                   ))}
                                 </div>
