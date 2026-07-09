@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import CentroCostos from "./CentroCostos";
+import Unidades from "./Unidades";
 
 const CENTROS_COSTOS = [
   "Postura Comercial Mexicali", "Ctos F Ind Post Rep Pesada", "Mntto",
@@ -564,6 +565,10 @@ function App() {
     return <CentroCostos onVolver={() => setModulo(null)} />;
   }
 
+  if (modulo === "unidades") {
+    return <Unidades onVolver={() => setModulo(null)} />;
+  }
+
   return (
     <div style={{ backgroundColor: "#0f172a", minHeight: "100vh", color: "white", fontFamily: "Arial, sans-serif" }}>
       <div style={{ backgroundColor: "#1e293b", padding: "16px 32px", display: "flex", alignItems: "center", gap: "12px", borderBottom: "2px solid #c0392b" }}>
@@ -580,6 +585,11 @@ function App() {
           <div style={{ fontSize: "32px" }}>🏢</div>
           <h2 style={{ color: "#f1f5f9", marginTop: "8px" }}>Centro de Costos</h2>
           <p style={{ color: "#94a3b8" }}>Cumplimiento, $ en riesgo y casos a revisar por área.</p>
+        </div>
+        <div onClick={() => setModulo("unidades")} style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "24px", borderLeft: "4px solid #06b6d4", cursor: "pointer" }}>
+          <div style={{ fontSize: "32px" }}>🚚</div>
+          <h2 style={{ color: "#f1f5f9", marginTop: "8px" }}>Unidades</h2>
+          <p style={{ color: "#94a3b8" }}>Desempeño, choferes y centros de costos por vehículo.</p>
         </div>
       </div>
     </div>
