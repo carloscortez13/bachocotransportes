@@ -4,6 +4,7 @@ import CentroCostos from "./CentroCostos";
 import Unidades from "./Unidades";
 import Conductores from "./Conductores";
 import Login from "./Login";
+import { descargarCSV } from "./exportUtils";
 
 const CENTROS_COSTOS = [
   "Postura Comercial Mexicali", "Ctos F Ind Post Rep Pesada", "Mntto",
@@ -323,8 +324,10 @@ function App() {
   const totalOK = datosFiltrados.filter(r => r.cumplimiento === "OK").length;
   const totalAbajo = datosFiltrados.filter(r => r.cumplimiento === "POR ABAJO").length;
   const totalArriba = datosFiltrados.filter(r => r.cumplimiento === "POR ARRIBA").length;
-  const promReal = datosConRend.filter(r => r.rendReal > 0).length > 0
-    ? (datosConRend.filter(r => r.rendReal > 0).reduce((a, r) => a + r.rendReal, 0) / datosConRend.filter(r => r.rendReal > 0).length).toFixed(2)
+  const sumaRecorridoTotal = datosConRend.reduce((a, r) => a + (parseFloat(r.recorrido) || 0), 0);
+  const sumaLitrosTotal = datosConRend.reduce((a, r) => a + (parseFloat(r.litros) || 0), 0);
+  const promReal = sumaLitrosTotal > 0
+    ? (sumaRecorridoTotal / sumaLitrosTotal).toFixed(2)
     : 0;
 
   const inputStyle = {
@@ -550,7 +553,30 @@ function App() {
             <p style={{ color: "#94a3b8" }}>Cargando datos...</p>
           ) : (
             <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "24px" }}>
-              <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Detalle de Cargas ({datosFiltrados.length} registros)</h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Detalle de Cargas ({datosFiltrados.length} registros)</h3>
+                <button
+                  onClick={() => descargarCSV(
+                    datosConRend.map(r => ({
+                      Fecha: r.fecha,
+                      Conductor: r.conductor,
+                      Vehiculo: r.id_vehiculo,
+                      Litros: parseFloat(r.litros || 0).toFixed(2),
+                      Recorrido_km: parseFloat(r.recorrido || 0).toFixed(0),
+                      Rend_Real: r.rendReal.toFixed(2),
+                      Rend_Estandar: parseFloat(r.rendimiento_estandar || 0).toFixed(2),
+                      Proveedor: r.proveedor,
+                      Region: r.region,
+                      Estado_Transaccion: r.estado_transaccion,
+                      Status: r.cumplimiento || "S/D"
+                    })),
+                    "eficiencia_combustible"
+                  )}
+                  style={{ backgroundColor: "#10b981", border: "none", color: "white", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}
+                >
+                  📥 Descargar Excel
+                </button>
+              </div>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
                   <thead>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { descargarCSV } from "./exportUtils";
 
 type Props = {
   onVolver: () => void;
@@ -15,13 +16,14 @@ interface FilaUnidad {
   dineroEnRiesgo: number;
   costoTotal: number;
   rendEstandarMasReciente: number;
-  sumaRendReal: number;
-  cargasConRendReal: number;
+  sumaRecorrido: number;
+  sumaLitros: number;
   conductores: Set<string>;
   centrosCostos: Set<string>;
   productos: Set<string>;
   proveedores: Set<string>;
   fechaMasReciente: string;
+  cargasDetalle: any[];
 }
 
 function Unidades({ onVolver }: Props) {
@@ -46,20 +48,35 @@ function Unidades({ onVolver }: Props) {
 
   const cargarDatos = async () => {
     setCargando(true);
-    let query = supabase
-      .from("vista_rendimiento")
-      .select("id_vehiculo, conductor, centro_costos, producto, proveedor, fecha, litros, recorrido, rendimiento_estandar, rendimiento_real, costo_litro, costo_total, cumplimiento, estado_transaccion");
+    const PAGE_SIZE = 1000;
+    let todasLasFilas: any[] = [];
+    let desde = 0;
 
-    if (fechaInicio) query = query.gte("fecha", fechaInicio);
-    if (fechaFin) query = query.lte("fecha", fechaFin);
-    if (filtroProducto) query = query.eq("producto", filtroProducto);
-    if (filtroEstados.length > 0) query = query.in("estado_transaccion", filtroEstados);
+    while (true) {
+      let query = supabase
+        .from("vista_rendimiento")
+        .select("id_vehiculo, conductor, centro_costos, producto, proveedor, fecha, litros, recorrido, rendimiento_estandar, rendimiento_real, costo_litro, costo_total, cumplimiento, estado_transaccion");
 
-    query = query.limit(10000);
+      if (fechaInicio) query = query.gte("fecha", fechaInicio);
+      if (fechaFin) query = query.lte("fecha", fechaFin);
+      if (filtroProducto) query = query.eq("producto", filtroProducto);
+      if (filtroEstados.length > 0) query = query.in("estado_transaccion", filtroEstados);
 
-    const { data, error } = await query;
-    if (error) console.error(error);
-    else setDatos(data || []);
+      query = query.range(desde, desde + PAGE_SIZE - 1);
+
+      const { data, error } = await query;
+      if (error) {
+        console.error(error);
+        break;
+      }
+      if (!data || data.length === 0) break;
+
+      todasLasFilas = todasLasFilas.concat(data);
+      if (data.length < PAGE_SIZE) break;
+      desde += PAGE_SIZE;
+    }
+
+    setDatos(todasLasFilas);
     setCargando(false);
   };
 
@@ -88,31 +105,30 @@ function Unidades({ onVolver }: Props) {
           dineroEnRiesgo: 0,
           costoTotal: 0,
           rendEstandarMasReciente: 0,
-          sumaRendReal: 0,
-          cargasConRendReal: 0,
+          sumaRecorrido: 0,
+          sumaLitros: 0,
           conductores: new Set(),
           centrosCostos: new Set(),
           productos: new Set(),
           proveedores: new Set(),
-          fechaMasReciente: ""
+          fechaMasReciente: "",
+          cargasDetalle: []
         };
       }
 
       const fila = mapa[idVehiculo];
       fila.cargas += 1;
+      fila.cargasDetalle.push(row);
 
       const litros = parseFloat(row.litros) || 0;
       const recorrido = parseFloat(row.recorrido) || 0;
       const estandar = parseFloat(row.rendimiento_estandar) || 0;
-      const rendReal = parseFloat(row.rendimiento_real) || 0;
       const costoLitro = parseFloat(row.costo_litro) || 0;
       const costoTotalFila = parseFloat(row.costo_total) || 0;
 
       fila.costoTotal += costoTotalFila;
-      if (rendReal > 0) {
-        fila.sumaRendReal += rendReal;
-        fila.cargasConRendReal += 1;
-      }
+      fila.sumaRecorrido += recorrido;
+      fila.sumaLitros += litros;
 
       if (row.conductor) fila.conductores.add(row.conductor);
       if (row.centro_costos) fila.centrosCostos.add(row.centro_costos);
@@ -279,8 +295,32 @@ function Unidades({ onVolver }: Props) {
           <p style={{ color: "#94a3b8" }}>Cargando datos...</p>
         ) : (
           <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "24px" }}>
-            <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Resumen por Unidad ({resumenPorUnidad.length} unidades)</h3>
-            <p style={{ color: "#64748b", fontSize: "13px", marginTop: "-8px", marginBottom: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Resumen por Unidad ({resumenPorUnidad.length} unidades)</h3>
+              <button
+                onClick={() => descargarCSV(
+                  resumenPorUnidad.map(f => ({
+                    Unidad: f.idVehiculo,
+                    Rend_Estandar: f.rendEstandarMasReciente.toFixed(2),
+                    Rend_Real_Promedio: (f.sumaLitros > 0 ? f.sumaRecorrido / f.sumaLitros : 0).toFixed(2),
+                    Cargas: f.cargas,
+                    OK: f.ok,
+                    Por_Abajo: f.abajo,
+                    Por_Arriba: f.arriba,
+                    Pct_Cumplimiento: f.pctCumplimiento.toFixed(1) + "%",
+                    Dinero_en_Riesgo: f.dineroEnRiesgo.toFixed(2),
+                    Costo_Total: f.costoTotal.toFixed(2),
+                    Conductores: [...f.conductores].join(" | "),
+                    Centros_de_Costos: [...f.centrosCostos].join(" | ")
+                  })),
+                  "unidades"
+                )}
+                style={{ backgroundColor: "#10b981", border: "none", color: "white", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}
+              >
+                📥 Descargar Excel
+              </button>
+            </div>
+            <p style={{ color: "#64748b", fontSize: "13px", marginTop: "8px", marginBottom: "16px" }}>
               Da clic en una unidad para ver detalle de conductores y centros de costos en el periodo seleccionado.
             </p>
             <div style={{ overflowX: "auto" }}>
@@ -303,7 +343,7 @@ function Unidades({ onVolver }: Props) {
                 <tbody>
                   {resumenPorUnidad.map((fila, i) => {
                     const expandida = unidadExpandida === fila.idVehiculo;
-                    const rendRealProm = fila.cargasConRendReal > 0 ? fila.sumaRendReal / fila.cargasConRendReal : 0;
+                    const rendRealProm = fila.sumaLitros > 0 ? fila.sumaRecorrido / fila.sumaLitros : 0;
                     return (
                       <>
                         <tr
@@ -369,6 +409,55 @@ function Unidades({ onVolver }: Props) {
                                     <p key={p} style={{ color: "#f1f5f9", fontSize: "13px", margin: "0 0 4px" }}>{p}</p>
                                   ))}
                                 </div>
+                              </div>
+
+                              <p style={{ color: "#94a3b8", fontSize: "12px", margin: "20px 0 8px", fontWeight: "bold" }}>
+                                Detalle de cargas ({fila.cargasDetalle.length})
+                              </p>
+                              <div style={{ overflowX: "auto" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
+                                  <thead>
+                                    <tr style={{ borderBottom: "1px solid #334155" }}>
+                                      <th style={{ color: "#64748b", textAlign: "left", padding: "8px", fontWeight: "normal", fontSize: "12px" }}>Fecha</th>
+                                      <th style={{ color: "#64748b", textAlign: "left", padding: "8px", fontWeight: "normal", fontSize: "12px" }}>Conductor</th>
+                                      <th style={{ color: "#64748b", textAlign: "right", padding: "8px", fontWeight: "normal", fontSize: "12px" }}>Litros</th>
+                                      <th style={{ color: "#64748b", textAlign: "right", padding: "8px", fontWeight: "normal", fontSize: "12px" }}>Recorrido</th>
+                                      <th style={{ color: "#64748b", textAlign: "right", padding: "8px", fontWeight: "normal", fontSize: "12px" }}>Rend. Real</th>
+                                      <th style={{ color: "#64748b", textAlign: "right", padding: "8px", fontWeight: "normal", fontSize: "12px" }}>Rend. Estándar</th>
+                                      <th style={{ color: "#64748b", textAlign: "left", padding: "8px", fontWeight: "normal", fontSize: "12px" }}>Proveedor</th>
+                                      <th style={{ color: "#64748b", textAlign: "left", padding: "8px", fontWeight: "normal", fontSize: "12px" }}>Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {fila.cargasDetalle
+                                      .slice()
+                                      .sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""))
+                                      .map((carga, j) => {
+                                        const status = carga.cumplimiento || "S/D";
+                                        const rendReal = parseFloat(carga.rendimiento_real) || 0;
+                                        return (
+                                          <tr key={j} style={{ borderBottom: "1px solid #0f172a" }}>
+                                            <td style={{ padding: "8px", color: "#94a3b8", fontSize: "13px", whiteSpace: "nowrap" }}>{carga.fecha}</td>
+                                            <td style={{ padding: "8px", color: "#f1f5f9", fontSize: "13px" }}>{carga.conductor}</td>
+                                            <td style={{ padding: "8px", color: "#f1f5f9", fontSize: "13px", textAlign: "right" }}>{parseFloat(carga.litros || 0).toFixed(2)}</td>
+                                            <td style={{ padding: "8px", color: "#f1f5f9", fontSize: "13px", textAlign: "right" }}>{parseFloat(carga.recorrido || 0).toFixed(0)} km</td>
+                                            <td style={{ padding: "8px", color: "#f1f5f9", fontSize: "13px", textAlign: "right" }}>{rendReal.toFixed(2)} km/L</td>
+                                            <td style={{ padding: "8px", color: "#94a3b8", fontSize: "13px", textAlign: "right" }}>{parseFloat(carga.rendimiento_estandar || 0).toFixed(2)} km/L</td>
+                                            <td style={{ padding: "8px", color: "#94a3b8", fontSize: "13px" }}>{carga.proveedor}</td>
+                                            <td style={{ padding: "8px" }}>
+                                              <span style={{
+                                                backgroundColor: status === "OK" ? "#10b98122" : status === "POR ABAJO" ? "#c0392b22" : status === "POR ARRIBA" ? "#f59e0b22" : "#33415522",
+                                                color: status === "OK" ? "#10b981" : status === "POR ABAJO" ? "#c0392b" : status === "POR ARRIBA" ? "#f59e0b" : "#64748b",
+                                                padding: "3px 10px",
+                                                borderRadius: "20px",
+                                                fontSize: "11px"
+                                              }}>{status}</span>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                  </tbody>
+                                </table>
                               </div>
                             </td>
                           </tr>
