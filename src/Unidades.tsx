@@ -182,6 +182,9 @@ function Unidades({ onVolver }: Props) {
   const pctGlobalCumplimiento = totalCargas > 0
     ? (datos.filter(r => r.cumplimiento === "OK").length / totalCargas) * 100
     : 0;
+  const sumaRecorridoGlobal = datos.reduce((a, r) => a + (parseFloat(r.recorrido) || 0), 0);
+  const sumaLitrosGlobal = datos.reduce((a, r) => a + (parseFloat(r.litros) || 0), 0);
+  const rendPromedioGlobal = sumaLitrosGlobal > 0 ? (sumaRecorridoGlobal / sumaLitrosGlobal) : 0;
 
   const inputStyle = {
     backgroundColor: "#0f172a",
@@ -267,10 +270,14 @@ function Unidades({ onVolver }: Props) {
         </div>
       </div>
 
-      <div style={{ padding: "24px 32px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px" }}>
+      <div style={{ padding: "24px 32px", display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "16px" }}>
         <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #06b6d4" }}>
           <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Total Unidades</p>
           <h2 style={{ color: "#06b6d4", margin: "8px 0 0", fontSize: "32px" }}>{totalUnidades}</h2>
+        </div>
+        <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #3b82f6" }}>
+          <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Rend. Promedio Real</p>
+          <h2 style={{ color: "#3b82f6", margin: "8px 0 0", fontSize: "28px" }}>{rendPromedioGlobal.toFixed(2)} <span style={{ fontSize: "14px" }}>km/L</span></h2>
         </div>
         <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #10b981" }}>
           <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>% Cumplimiento Global</p>
