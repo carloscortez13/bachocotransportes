@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 import CentroCostos from "./CentroCostos";
 import Unidades from "./Unidades";
 import Conductores from "./Conductores";
+import Login from "./Login";
 
 const CENTROS_COSTOS = [
   "Postura Comercial Mexicali", "Ctos F Ind Post Rep Pesada", "Mntto",
@@ -200,6 +201,8 @@ const PROVEEDORES = [
 ];
 
 function App() {
+  const [sesion, setSesion] = useState<any>(null);
+  const [cargandoSesion, setCargandoSesion] = useState(true);
   const [modulo, setModulo] = useState<string | null>(null);
   const [datos, setDatos] = useState<any[]>([]);
   const [datosFiltrados, setDatosFiltrados] = useState<any[]>([]);
@@ -222,26 +225,54 @@ function App() {
   const [estadoDropdownOpen, setEstadoDropdownOpen] = useState(false);
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSesion(data.session);
+      setCargandoSesion(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nuevaSesion) => {
+      setSesion(nuevaSesion);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
     if (modulo === "combustible") cargarDatos();
   }, [modulo, fechaInicio, fechaFin, filtroConductor, filtroRegion, filtroCentros, filtroProveedores, filtroEstados]);
 
   const cargarDatos = async () => {
     setCargando(true);
-    let query = supabase.from("vista_rendimiento").select("*");
-    if (fechaInicio) query = query.gte("fecha", fechaInicio);
-    if (fechaFin) query = query.lte("fecha", fechaFin);
-    if (filtroConductor) query = query.ilike("conductor", `%${filtroConductor}%`);
-    if (filtroRegion) query = query.eq("region", filtroRegion);
-    if (filtroCentros.length > 0) query = query.in("centro_costos", filtroCentros);
-    if (filtroProveedores.length > 0) query = query.in("proveedor", filtroProveedores);
-    if (filtroEstados.length > 0) query = query.in("estado_transaccion", filtroEstados);
-    query = query.limit(10000);
-    const { data, error } = await query;
-    if (error) console.error(error);
-    else {
-      setDatos(data || []);
-      setDatosFiltrados(data || []);
+    const PAGE_SIZE = 1000;
+    let todasLasFilas: any[] = [];
+    let desde = 0;
+
+    while (true) {
+      let query = supabase.from("vista_rendimiento").select("*");
+      if (fechaInicio) query = query.gte("fecha", fechaInicio);
+      if (fechaFin) query = query.lte("fecha", fechaFin);
+      if (filtroConductor) query = query.ilike("conductor", `%${filtroConductor}%`);
+      if (filtroRegion) query = query.eq("region", filtroRegion);
+      if (filtroCentros.length > 0) query = query.in("centro_costos", filtroCentros);
+      if (filtroProveedores.length > 0) query = query.in("proveedor", filtroProveedores);
+      if (filtroEstados.length > 0) query = query.in("estado_transaccion", filtroEstados);
+
+      query = query.range(desde, desde + PAGE_SIZE - 1);
+
+      const { data, error } = await query;
+      if (error) {
+        console.error(error);
+        break;
+      }
+      if (!data || data.length === 0) break;
+
+      todasLasFilas = todasLasFilas.concat(data);
+      if (data.length < PAGE_SIZE) break;
+      desde += PAGE_SIZE;
     }
+
+    setDatos(todasLasFilas);
+    setDatosFiltrados(todasLasFilas);
     setCargando(false);
   };
 
@@ -305,6 +336,18 @@ function App() {
     fontSize: "14px",
     width: "100%"
   };
+
+  if (cargandoSesion) {
+    return (
+      <div style={{ backgroundColor: "#0f172a", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontFamily: "Arial, sans-serif" }}>
+        Cargando...
+      </div>
+    );
+  }
+
+  if (!sesion) {
+    return <Login />;
+  }
 
   if (modulo === "combustible") {
     return (
@@ -576,9 +619,17 @@ function App() {
 
   return (
     <div style={{ backgroundColor: "#0f172a", minHeight: "100vh", color: "white", fontFamily: "Arial, sans-serif" }}>
-      <div style={{ backgroundColor: "#1e293b", padding: "16px 32px", display: "flex", alignItems: "center", gap: "12px", borderBottom: "2px solid #c0392b" }}>
-        <span style={{ fontSize: "24px" }}>🚛</span>
-        <h1 style={{ margin: 0, fontSize: "20px", color: "#f1f5f9" }}>Control Transportes — Bachoco Noroeste</h1>
+      <div style={{ backgroundColor: "#1e293b", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: "2px solid #c0392b" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ fontSize: "24px" }}>🚛</span>
+          <h1 style={{ margin: 0, fontSize: "20px", color: "#f1f5f9" }}>Control Transportes — Bachoco Noroeste</h1>
+        </div>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          style={{ background: "none", border: "1px solid #334155", color: "#94a3b8", cursor: "pointer", fontSize: "13px", padding: "6px 14px", borderRadius: "8px" }}
+        >
+          Cerrar sesión
+        </button>
       </div>
       <div style={{ padding: "32px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
         <div onClick={() => setModulo("combustible")} style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "24px", borderLeft: "4px solid #c0392b", cursor: "pointer" }}>
