@@ -156,6 +156,15 @@ function CentroCostos({ onVolver }: Props) {
   const pctGlobalCumplimiento = totalCargas > 0
     ? (datos.filter(r => r.cumplimiento === "OK").length / totalCargas) * 100
     : 0;
+  const sumaRecorridoGlobal = datos.reduce((a, r) => a + (parseFloat(r.recorrido) || 0), 0);
+  const sumaLitrosGlobal = datos.reduce((a, r) => a + (parseFloat(r.litros) || 0), 0);
+  const sumaLitrosPorEstandarGlobal = datos.reduce((a, r) => {
+    const est = parseFloat(r.rendimiento_estandar) || 0;
+    const lit = parseFloat(r.litros) || 0;
+    return est > 0 ? a + est * lit : a;
+  }, 0);
+  const rendEstandarGlobal = sumaLitrosGlobal > 0 ? sumaLitrosPorEstandarGlobal / sumaLitrosGlobal : 0;
+  const rendRealGlobal = sumaLitrosGlobal > 0 ? sumaRecorridoGlobal / sumaLitrosGlobal : 0;
 
   const inputStyle = {
     backgroundColor: "#0f172a",
@@ -238,10 +247,18 @@ function CentroCostos({ onVolver }: Props) {
       </div>
 
       {/* KPIs globales */}
-      <div style={{ padding: "24px 32px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+      <div style={{ padding: "24px 32px", display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "16px" }}>
         <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #10b981" }}>
           <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>% Cumplimiento Global</p>
           <h2 style={{ color: "#10b981", margin: "8px 0 0", fontSize: "32px" }}>{pctGlobalCumplimiento.toFixed(1)}%</h2>
+        </div>
+        <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #94a3b8" }}>
+          <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Rend. Estándar Prom.</p>
+          <h2 style={{ color: "#f1f5f9", margin: "8px 0 0", fontSize: "28px" }}>{rendEstandarGlobal.toFixed(2)} <span style={{ fontSize: "14px" }}>km/L</span></h2>
+        </div>
+        <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #3b82f6" }}>
+          <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Rend. Real Prom.</p>
+          <h2 style={{ color: "#3b82f6", margin: "8px 0 0", fontSize: "28px" }}>{rendRealGlobal.toFixed(2)} <span style={{ fontSize: "14px" }}>km/L</span></h2>
         </div>
         <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #c0392b" }}>
           <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>$ Total en Riesgo</p>
