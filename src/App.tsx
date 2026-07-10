@@ -326,6 +326,14 @@ function App() {
   const totalArriba = datosFiltrados.filter(r => r.cumplimiento === "POR ARRIBA").length;
   const sumaRecorridoTotal = datosConRend.reduce((a, r) => a + (parseFloat(r.recorrido) || 0), 0);
   const sumaLitrosTotal = datosConRend.reduce((a, r) => a + (parseFloat(r.litros) || 0), 0);
+  const sumaLitrosPorEstandarTotal = datosConRend.reduce((a, r) => {
+    const est = parseFloat(r.rendimiento_estandar) || 0;
+    const lit = parseFloat(r.litros) || 0;
+    return est > 0 ? a + est * lit : a;
+  }, 0);
+  const promEstandar = sumaLitrosTotal > 0
+    ? (sumaLitrosPorEstandarTotal / sumaLitrosTotal).toFixed(2)
+    : 0;
   const promReal = sumaLitrosTotal > 0
     ? (sumaRecorridoTotal / sumaLitrosTotal).toFixed(2)
     : 0;
@@ -525,7 +533,7 @@ function App() {
           </button>
         </div>
 
-        <div style={{ padding: "24px 32px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px" }}>
+        <div style={{ padding: "24px 32px", display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "16px" }}>
           <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #10b981" }}>
             <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Cargas OK</p>
             <h2 style={{ color: "#10b981", margin: "8px 0 0", fontSize: "32px" }}>{totalOK}</h2>
@@ -538,9 +546,13 @@ function App() {
             <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Cargas POR ARRIBA</p>
             <h2 style={{ color: "#f59e0b", margin: "8px 0 0", fontSize: "32px" }}>{totalArriba}</h2>
           </div>
+          <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #94a3b8" }}>
+            <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Rend. Estándar Prom.</p>
+            <h2 style={{ color: "#f1f5f9", margin: "8px 0 0", fontSize: "28px" }}>{promEstandar} <span style={{ fontSize: "14px" }}>km/L</span></h2>
+          </div>
           <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #3b82f6" }}>
             <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Rend. Promedio Real</p>
-            <h2 style={{ color: "#3b82f6", margin: "8px 0 0", fontSize: "32px" }}>{promReal} <span style={{ fontSize: "16px" }}>km/L</span></h2>
+            <h2 style={{ color: "#3b82f6", margin: "8px 0 0", fontSize: "28px" }}>{promReal} <span style={{ fontSize: "14px" }}>km/L</span></h2>
           </div>
           <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "20px", borderTop: "4px solid #8b5cf6" }}>
             <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>Total Registros</p>

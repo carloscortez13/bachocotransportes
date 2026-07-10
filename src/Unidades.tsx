@@ -16,6 +16,7 @@ interface FilaUnidad {
   dineroEnRiesgo: number;
   costoTotal: number;
   rendEstandarMasReciente: number;
+  sumaLitrosPorEstandar: number;
   sumaRecorrido: number;
   sumaLitros: number;
   conductores: Set<string>;
@@ -105,6 +106,7 @@ function Unidades({ onVolver }: Props) {
           dineroEnRiesgo: 0,
           costoTotal: 0,
           rendEstandarMasReciente: 0,
+          sumaLitrosPorEstandar: 0,
           sumaRecorrido: 0,
           sumaLitros: 0,
           conductores: new Set(),
@@ -134,6 +136,8 @@ function Unidades({ onVolver }: Props) {
       if (row.centro_costos) fila.centrosCostos.add(row.centro_costos);
       if (row.producto) fila.productos.add(row.producto);
       if (row.proveedor) fila.proveedores.add(row.proveedor);
+
+      if (estandar > 0) fila.sumaLitrosPorEstandar += litros * estandar;
 
       if (row.fecha && row.fecha >= fila.fechaMasReciente) {
         fila.fechaMasReciente = row.fecha;
@@ -308,7 +312,7 @@ function Unidades({ onVolver }: Props) {
                 onClick={() => descargarCSV(
                   resumenPorUnidad.map(f => ({
                     Unidad: f.idVehiculo,
-                    Rend_Estandar: f.rendEstandarMasReciente.toFixed(2),
+                    Rend_Estandar: (f.sumaLitros > 0 ? f.sumaLitrosPorEstandar / f.sumaLitros : 0).toFixed(2),
                     Rend_Real_Promedio: (f.sumaLitros > 0 ? f.sumaRecorrido / f.sumaLitros : 0).toFixed(2),
                     Cargas: f.cargas,
                     OK: f.ok,
@@ -361,7 +365,7 @@ function Unidades({ onVolver }: Props) {
                           <td style={{ padding: "12px", color: "#f1f5f9" }}>
                             {expandida ? "▼" : "▶"} {fila.idVehiculo}
                           </td>
-                          <td style={{ padding: "12px", color: "#94a3b8", textAlign: "right" }}>{fila.rendEstandarMasReciente.toFixed(2)} km/L</td>
+                          <td style={{ padding: "12px", color: "#94a3b8", textAlign: "right" }}>{(fila.sumaLitros > 0 ? fila.sumaLitrosPorEstandar / fila.sumaLitros : 0).toFixed(2)} km/L</td>
                           <td style={{ padding: "12px", color: "#f1f5f9", textAlign: "right" }}>{rendRealProm.toFixed(2)} km/L</td>
                           <td style={{ padding: "12px", color: "#f1f5f9", textAlign: "right" }}>{fila.cargas}</td>
                           <td style={{ padding: "12px", color: "#10b981", textAlign: "right" }}>{fila.ok}</td>

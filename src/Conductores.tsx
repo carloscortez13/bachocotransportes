@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { descargarCSV } from "./exportUtils";
 
 type Props = {
   onVolver: () => void;
@@ -16,6 +17,7 @@ interface FilaConductor {
   costoTotal: number;
   recorridoTotal: number;
   litrosTotal: number;
+  sumaLitrosPorEstandar: number;
   unidades: Set<string>;
   centrosCostos: Set<string>;
   proveedores: Set<string>;
@@ -45,20 +47,35 @@ function Conductores({ onVolver }: Props) {
 
   const cargarDatos = async () => {
     setCargando(true);
-    let query = supabase
-      .from("vista_rendimiento")
-      .select("conductor, id_vehiculo, centro_costos, producto, proveedor, fecha, litros, recorrido, rendimiento_estandar, rendimiento_real, costo_litro, costo_total, cumplimiento, estado_transaccion");
+    const PAGE_SIZE = 1000;
+    let todasLasFilas: any[] = [];
+    let desde = 0;
 
-    if (fechaInicio) query = query.gte("fecha", fechaInicio);
-    if (fechaFin) query = query.lte("fecha", fechaFin);
-    if (filtroProducto) query = query.eq("producto", filtroProducto);
-    if (filtroEstados.length > 0) query = query.in("estado_transaccion", filtroEstados);
+    while (true) {
+      let query = supabase
+        .from("vista_rendimiento")
+        .select("conductor, id_vehiculo, centro_costos, producto, proveedor, fecha, litros, recorrido, rendimiento_estandar, rendimiento_real, costo_litro, costo_total, cumplimiento, estado_transaccion");
 
-    query = query.limit(10000);
+      if (fechaInicio) query = query.gte("fecha", fechaInicio);
+      if (fechaFin) query = query.lte("fecha", fechaFin);
+      if (filtroProducto) query = query.eq("producto", filtroProducto);
+      if (filtroEstados.length > 0) query = query.in("estado_transaccion", filtroEstados);
 
-    const { data, error } = await query;
-    if (error) console.error(error);
-    else setDatos(data || []);
+      query = query.range(desde, desde + PAGE_SIZE - 1);
+
+      const { data, error } = await query;
+      if (error) {
+        console.error(error);
+        break;
+      }
+      if (!data || data.length === 0) break;
+
+      todasLasFilas = todasLasFilas.concat(data);
+      if (data.length < PAGE_SIZE) break;
+      desde += PAGE_SIZE;
+    }
+
+    setDatos(todasLasFilas);
     setCargando(false);
   };
 
@@ -88,6 +105,7 @@ function Conductores({ onVolver }: Props) {
           costoTotal: 0,
           recorridoTotal: 0,
           litrosTotal: 0,
+          sumaLitrosPorEstandar: 0,
           unidades: new Set(),
           centrosCostos: new Set(),
           proveedores: new Set(),
@@ -109,6 +127,7 @@ function Conductores({ onVolver }: Props) {
       fila.costoTotal += costoTotalFila;
       fila.recorridoTotal += recorrido;
       fila.litrosTotal += litros;
+      if (estandar > 0) fila.sumaLitrosPorEstandar += litros * estandar;
 
       if (row.id_vehiculo) fila.unidades.add(row.id_vehiculo);
       if (row.centro_costos) fila.centrosCostos.add(row.centro_costos);
@@ -270,8 +289,33 @@ function Conductores({ onVolver }: Props) {
           <p style={{ color: "#94a3b8" }}>Cargando datos...</p>
         ) : (
           <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "24px" }}>
-            <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Resumen por Conductor ({resumenPorConductor.length} conductores)</h3>
-            <p style={{ color: "#64748b", fontSize: "13px", marginTop: "-8px", marginBottom: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Resumen por Conductor ({resumenPorConductor.length} conductores)</h3>
+              <button
+                onClick={() => descargarCSV(
+                  resumenPorConductor.map(f => ({
+                    Conductor: f.conductor,
+                    Rend_Estandar_Prom: (f.litrosTotal > 0 ? f.sumaLitrosPorEstandar / f.litrosTotal : 0).toFixed(2),
+                    Rend_Real_Prom: (f.litrosTotal > 0 ? f.recorridoTotal / f.litrosTotal : 0).toFixed(2),
+                    Cargas: f.cargas,
+                    OK: f.ok,
+                    Por_Abajo: f.abajo,
+                    Por_Arriba: f.arriba,
+                    Pct_Cumplimiento: f.pctCumplimiento.toFixed(1) + "%",
+                    Dinero_en_Riesgo: f.dineroEnRiesgo.toFixed(2),
+                    Costo_Total: f.costoTotal.toFixed(2),
+                    Recorrido_Total_km: f.recorridoTotal.toFixed(0),
+                    Unidades: [...f.unidades].join(" | "),
+                    Centros_de_Costos: [...f.centrosCostos].join(" | ")
+                  })),
+                  "conductores"
+                )}
+                style={{ backgroundColor: "#10b981", border: "none", color: "white", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}
+              >
+                📥 Descargar Excel
+              </button>
+            </div>
+            <p style={{ color: "#64748b", fontSize: "13px", marginTop: "8px", marginBottom: "16px" }}>
               Da clic en un conductor para ver detalle de unidades, centros de costos y cargas en el periodo seleccionado.
             </p>
             <div style={{ overflowX: "auto" }}>
@@ -279,6 +323,8 @@ function Conductores({ onVolver }: Props) {
                 <thead>
                   <tr style={{ borderBottom: "1px solid #334155" }}>
                     <th style={{ color: "#94a3b8", textAlign: "left", padding: "12px", fontWeight: "normal" }}>Conductor</th>
+                    <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Rend. Estándar Prom.</th>
+                    <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Rend. Real Prom.</th>
                     <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Cargas</th>
                     <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>OK</th>
                     <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Abajo</th>
@@ -303,6 +349,12 @@ function Conductores({ onVolver }: Props) {
                         >
                           <td style={{ padding: "12px", color: "#f1f5f9" }}>
                             {expandido ? "▼" : "▶"} {fila.conductor}
+                          </td>
+                          <td style={{ padding: "12px", color: "#94a3b8", textAlign: "right" }}>
+                            {(fila.litrosTotal > 0 ? fila.sumaLitrosPorEstandar / fila.litrosTotal : 0).toFixed(2)} km/L
+                          </td>
+                          <td style={{ padding: "12px", color: "#f1f5f9", textAlign: "right" }}>
+                            {(fila.litrosTotal > 0 ? fila.recorridoTotal / fila.litrosTotal : 0).toFixed(2)} km/L
                           </td>
                           <td style={{ padding: "12px", color: "#f1f5f9", textAlign: "right" }}>{fila.cargas}</td>
                           <td style={{ padding: "12px", color: "#10b981", textAlign: "right" }}>{fila.ok}</td>

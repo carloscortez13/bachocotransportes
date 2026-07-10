@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { descargarCSV } from "./exportUtils";
 
 // Reutiliza el mismo catálogo fijo de Centros de Costos que ya tienes en App.tsx.
 // Si quieres, luego lo movemos a un archivo compartido (ej. constantes.ts) para no
@@ -17,6 +18,9 @@ interface FilaCentro {
   pctCumplimiento: number;
   dineroEnRiesgo: number;
   costoTotal: number;
+  sumaRecorrido: number;
+  sumaLitros: number;
+  sumaLitrosPorEstandar: number;
 }
 
 function CentroCostos({ onVolver }: Props) {
@@ -39,20 +43,35 @@ function CentroCostos({ onVolver }: Props) {
 
   const cargarDatos = async () => {
     setCargando(true);
-    let query = supabase
-      .from("vista_rendimiento")
-      .select("centro_costos, producto, litros, recorrido, rendimiento_estandar, costo_litro, costo_total, cumplimiento, estado_transaccion");
+    const PAGE_SIZE = 1000;
+    let todasLasFilas: any[] = [];
+    let desde = 0;
 
-    if (fechaInicio) query = query.gte("fecha", fechaInicio);
-    if (fechaFin) query = query.lte("fecha", fechaFin);
-    if (filtroProducto) query = query.eq("producto", filtroProducto);
-    if (filtroEstados.length > 0) query = query.in("estado_transaccion", filtroEstados);
+    while (true) {
+      let query = supabase
+        .from("vista_rendimiento")
+        .select("centro_costos, producto, litros, recorrido, rendimiento_estandar, costo_litro, costo_total, cumplimiento, estado_transaccion");
 
-    query = query.limit(10000);
+      if (fechaInicio) query = query.gte("fecha", fechaInicio);
+      if (fechaFin) query = query.lte("fecha", fechaFin);
+      if (filtroProducto) query = query.eq("producto", filtroProducto);
+      if (filtroEstados.length > 0) query = query.in("estado_transaccion", filtroEstados);
 
-    const { data, error } = await query;
-    if (error) console.error(error);
-    else setDatos(data || []);
+      query = query.range(desde, desde + PAGE_SIZE - 1);
+
+      const { data, error } = await query;
+      if (error) {
+        console.error(error);
+        break;
+      }
+      if (!data || data.length === 0) break;
+
+      todasLasFilas = todasLasFilas.concat(data);
+      if (data.length < PAGE_SIZE) break;
+      desde += PAGE_SIZE;
+    }
+
+    setDatos(todasLasFilas);
     setCargando(false);
   };
 
@@ -79,7 +98,10 @@ function CentroCostos({ onVolver }: Props) {
           arriba: 0,
           pctCumplimiento: 0,
           dineroEnRiesgo: 0,
-          costoTotal: 0
+          costoTotal: 0,
+          sumaRecorrido: 0,
+          sumaLitros: 0,
+          sumaLitrosPorEstandar: 0
         };
       }
 
@@ -93,6 +115,9 @@ function CentroCostos({ onVolver }: Props) {
       const costoTotalFila = parseFloat(row.costo_total) || 0;
 
       fila.costoTotal += costoTotalFila;
+      fila.sumaRecorrido += recorrido;
+      fila.sumaLitros += litros;
+      if (estandar > 0) fila.sumaLitrosPorEstandar += litros * estandar;
 
       if (row.cumplimiento === "OK") {
         fila.ok += 1;
@@ -238,12 +263,36 @@ function CentroCostos({ onVolver }: Props) {
           <p style={{ color: "#94a3b8" }}>Cargando datos...</p>
         ) : (
           <div style={{ backgroundColor: "#1e293b", borderRadius: "12px", padding: "24px" }}>
-            <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Resumen por Centro de Costos ({resumenPorCentro.length} centros)</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Resumen por Centro de Costos ({resumenPorCentro.length} centros)</h3>
+              <button
+                onClick={() => descargarCSV(
+                  resumenPorCentro.map(f => ({
+                    Centro_de_Costos: f.centro,
+                    Rend_Estandar_Prom: (f.sumaLitros > 0 ? f.sumaLitrosPorEstandar / f.sumaLitros : 0).toFixed(2),
+                    Rend_Real_Prom: (f.sumaLitros > 0 ? f.sumaRecorrido / f.sumaLitros : 0).toFixed(2),
+                    Cargas: f.cargas,
+                    OK: f.ok,
+                    Por_Abajo: f.abajo,
+                    Por_Arriba: f.arriba,
+                    Pct_Cumplimiento: f.pctCumplimiento.toFixed(1) + "%",
+                    Dinero_en_Riesgo: f.dineroEnRiesgo.toFixed(2),
+                    Costo_Total: f.costoTotal.toFixed(2)
+                  })),
+                  "centro_de_costos"
+                )}
+                style={{ backgroundColor: "#10b981", border: "none", color: "white", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}
+              >
+                📥 Descargar Excel
+              </button>
+            </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #334155" }}>
                     <th style={{ color: "#94a3b8", textAlign: "left", padding: "12px", fontWeight: "normal" }}>Centro de Costos</th>
+                    <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Rend. Estándar Prom.</th>
+                    <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Rend. Real Prom.</th>
                     <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Cargas</th>
                     <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>OK</th>
                     <th style={{ color: "#94a3b8", textAlign: "right", padding: "12px", fontWeight: "normal" }}>Por Abajo</th>
@@ -257,6 +306,12 @@ function CentroCostos({ onVolver }: Props) {
                   {resumenPorCentro.map((fila, i) => (
                     <tr key={i} style={{ borderBottom: "1px solid #0f172a" }}>
                       <td style={{ padding: "12px", color: "#f1f5f9" }}>{fila.centro}</td>
+                      <td style={{ padding: "12px", color: "#94a3b8", textAlign: "right" }}>
+                        {(fila.sumaLitros > 0 ? fila.sumaLitrosPorEstandar / fila.sumaLitros : 0).toFixed(2)} km/L
+                      </td>
+                      <td style={{ padding: "12px", color: "#f1f5f9", textAlign: "right" }}>
+                        {(fila.sumaLitros > 0 ? fila.sumaRecorrido / fila.sumaLitros : 0).toFixed(2)} km/L
+                      </td>
                       <td style={{ padding: "12px", color: "#f1f5f9", textAlign: "right" }}>{fila.cargas}</td>
                       <td style={{ padding: "12px", color: "#10b981", textAlign: "right" }}>{fila.ok}</td>
                       <td style={{ padding: "12px", color: "#c0392b", textAlign: "right" }}>{fila.abajo}</td>
