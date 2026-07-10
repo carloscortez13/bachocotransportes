@@ -418,9 +418,33 @@ function Unidades({ onVolver }: Props) {
                                 </div>
                               </div>
 
-                              <p style={{ color: "#94a3b8", fontSize: "12px", margin: "20px 0 8px", fontWeight: "bold" }}>
-                                Detalle de cargas ({fila.cargasDetalle.length})
-                              </p>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "20px", marginBottom: "8px" }}>
+                                <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0, fontWeight: "bold" }}>
+                                  Detalle de cargas ({fila.cargasDetalle.length})
+                                </p>
+                                <button
+                                  onClick={() => descargarCSV(
+                                    fila.cargasDetalle
+                                      .slice()
+                                      .sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""))
+                                      .map((c: any) => ({
+                                        Fecha: c.fecha,
+                                        Conductor: c.conductor,
+                                        Litros: parseFloat(c.litros || 0).toFixed(2),
+                                        Recorrido_km: parseFloat(c.recorrido || 0).toFixed(0),
+                                        Rend_Real: (parseFloat(c.rendimiento_real) || 0).toFixed(2),
+                                        Rend_Estandar: parseFloat(c.rendimiento_estandar || 0).toFixed(2),
+                                        Proveedor: c.proveedor,
+                                        Estado_Transaccion: c.estado_transaccion,
+                                        Status: c.cumplimiento || "S/D"
+                                      })),
+                                    `detalle_unidad_${fila.idVehiculo}`
+                                  )}
+                                  style={{ backgroundColor: "#10b981", border: "none", color: "white", padding: "6px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
+                                >
+                                  📥 Descargar detalle
+                                </button>
+                              </div>
                               <div style={{ overflowX: "auto" }}>
                                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
                                   <thead>
