@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { descargarCSV } from "./exportUtils";
 
@@ -40,12 +40,14 @@ function Conductores({ onVolver }: Props) {
   const [estadoDropdownOpen, setEstadoDropdownOpen] = useState(false);
   const [orden, setOrden] = useState<"riesgo" | "cumplimiento" | "cargas">("riesgo");
   const [conductorExpandido, setConductorExpandido] = useState<string | null>(null);
+  const idPeticionActual = useRef(0);
 
   useEffect(() => {
     cargarDatos();
   }, [fechaInicio, fechaFin, filtroProducto, filtroEstados]);
 
   const cargarDatos = async () => {
+    const miId = ++idPeticionActual.current;
     setCargando(true);
     const PAGE_SIZE = 1000;
     let todasLasFilas: any[] = [];
@@ -64,6 +66,11 @@ function Conductores({ onVolver }: Props) {
       query = query.range(desde, desde + PAGE_SIZE - 1);
 
       const { data, error } = await query;
+
+      // Si mientras esperábamos esta respuesta ya se disparó una petición más nueva
+      // (el usuario cambió el filtro otra vez), descartamos esta y dejamos que gane la nueva.
+      if (miId !== idPeticionActual.current) return;
+
       if (error) {
         console.error(error);
         break;
@@ -75,6 +82,7 @@ function Conductores({ onVolver }: Props) {
       desde += PAGE_SIZE;
     }
 
+    if (miId !== idPeticionActual.current) return;
     setDatos(todasLasFilas);
     setCargando(false);
   };
@@ -436,9 +444,33 @@ function Conductores({ onVolver }: Props) {
                                 </div>
                               </div>
 
-                              <p style={{ color: "#94a3b8", fontSize: "12px", margin: "20px 0 8px", fontWeight: "bold" }}>
-                                Detalle de cargas ({fila.cargasDetalle.length})
-                              </p>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "20px", marginBottom: "8px" }}>
+                                <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0, fontWeight: "bold" }}>
+                                  Detalle de cargas ({fila.cargasDetalle.length})
+                                </p>
+                                <button
+                                  onClick={() => descargarCSV(
+                                    fila.cargasDetalle
+                                      .slice()
+                                      .sort((a: any, b: any) => (a.fecha || "").localeCompare(b.fecha || ""))
+                                      .map((c: any) => ({
+                                        Fecha: c.fecha,
+                                        Unidad: c.id_vehiculo,
+                                        Litros: parseFloat(c.litros || 0).toFixed(2),
+                                        Recorrido_km: parseFloat(c.recorrido || 0).toFixed(0),
+                                        Rend_Real: (parseFloat(c.rendimiento_real) || 0).toFixed(2),
+                                        Rend_Estandar: parseFloat(c.rendimiento_estandar || 0).toFixed(2),
+                                        Proveedor: c.proveedor,
+                                        Estado_Transaccion: c.estado_transaccion,
+                                        Status: c.cumplimiento || "S/D"
+                                      })),
+                                    `detalle_conductor_${fila.conductor}`
+                                  )}
+                                  style={{ backgroundColor: "#10b981", border: "none", color: "white", padding: "6px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
+                                >
+                                  📥 Descargar detalle
+                                </button>
+                              </div>
                               <div style={{ overflowX: "auto" }}>
                                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
                                   <thead>

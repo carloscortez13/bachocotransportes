@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { descargarCSV } from "./exportUtils";
 
@@ -42,12 +42,14 @@ function Unidades({ onVolver }: Props) {
   const [estadoDropdownOpen, setEstadoDropdownOpen] = useState(false);
   const [orden, setOrden] = useState<"riesgo" | "cumplimiento" | "cargas">("riesgo");
   const [unidadExpandida, setUnidadExpandida] = useState<string | null>(null);
+  const idPeticionActual = useRef(0);
 
   useEffect(() => {
     cargarDatos();
   }, [fechaInicio, fechaFin, filtroProducto, filtroEstados]);
 
   const cargarDatos = async () => {
+    const miId = ++idPeticionActual.current;
     setCargando(true);
     const PAGE_SIZE = 1000;
     let todasLasFilas: any[] = [];
@@ -66,6 +68,9 @@ function Unidades({ onVolver }: Props) {
       query = query.range(desde, desde + PAGE_SIZE - 1);
 
       const { data, error } = await query;
+
+      if (miId !== idPeticionActual.current) return;
+
       if (error) {
         console.error(error);
         break;
@@ -77,6 +82,7 @@ function Unidades({ onVolver }: Props) {
       desde += PAGE_SIZE;
     }
 
+    if (miId !== idPeticionActual.current) return;
     setDatos(todasLasFilas);
     setCargando(false);
   };

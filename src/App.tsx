@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import CentroCostos from "./CentroCostos";
 import Unidades from "./Unidades";
@@ -238,11 +238,14 @@ function App() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  const idPeticionActual = useRef(0);
+
   useEffect(() => {
     if (modulo === "combustible") cargarDatos();
   }, [modulo, fechaInicio, fechaFin, filtroConductor, filtroRegion, filtroCentros, filtroProveedores, filtroEstados]);
 
   const cargarDatos = async () => {
+    const miId = ++idPeticionActual.current;
     setCargando(true);
     const PAGE_SIZE = 1000;
     let todasLasFilas: any[] = [];
@@ -261,6 +264,9 @@ function App() {
       query = query.range(desde, desde + PAGE_SIZE - 1);
 
       const { data, error } = await query;
+
+      if (miId !== idPeticionActual.current) return;
+
       if (error) {
         console.error(error);
         break;
@@ -272,6 +278,7 @@ function App() {
       desde += PAGE_SIZE;
     }
 
+    if (miId !== idPeticionActual.current) return;
     setDatos(todasLasFilas);
     setDatosFiltrados(todasLasFilas);
     setCargando(false);
