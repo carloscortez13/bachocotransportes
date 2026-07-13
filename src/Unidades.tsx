@@ -179,17 +179,23 @@ function Unidades({ onVolver }: Props) {
     return filas;
   })();
 
-  const totalCargas = datos.length;
+  // Dataset filtrado por el buscador de unidad, para que los KPIs de arriba
+  // reflejen el mismo filtro que ya se le aplica a la tabla.
+  const datosParaKPIs = busquedaUnidad.trim()
+    ? datos.filter(r => (r.id_vehiculo || "").toLowerCase().includes(busquedaUnidad.toLowerCase()))
+    : datos;
+
+  const totalCargas = datosParaKPIs.length;
   const totalRiesgo = resumenPorUnidad.reduce((a, f) => a + f.dineroEnRiesgo, 0);
   const costoTotalGlobal = resumenPorUnidad.reduce((a, f) => a + f.costoTotal, 0);
   const totalUnidades = resumenPorUnidad.length;
   const pctGlobalCumplimiento = totalCargas > 0
-    ? (datos.filter(r => r.cumplimiento === "OK").length / totalCargas) * 100
+    ? (datosParaKPIs.filter(r => r.cumplimiento === "OK").length / totalCargas) * 100
     : 0;
-  const sumaRecorridoGlobal = datos.reduce((a, r) => a + (parseFloat(r.recorrido) || 0), 0);
-  const sumaLitrosGlobal = datos.reduce((a, r) => a + (parseFloat(r.litros) || 0), 0);
+  const sumaRecorridoGlobal = datosParaKPIs.reduce((a, r) => a + (parseFloat(r.recorrido) || 0), 0);
+  const sumaLitrosGlobal = datosParaKPIs.reduce((a, r) => a + (parseFloat(r.litros) || 0), 0);
   const rendPromedioGlobal = sumaLitrosGlobal > 0 ? (sumaRecorridoGlobal / sumaLitrosGlobal) : 0;
-  const sumaLitrosPorEstandarGlobal = datos.reduce((a, r) => {
+  const sumaLitrosPorEstandarGlobal = datosParaKPIs.reduce((a, r) => {
     const est = parseFloat(r.rendimiento_estandar) || 0;
     const lit = parseFloat(r.litros) || 0;
     return est > 0 ? a + est * lit : a;
