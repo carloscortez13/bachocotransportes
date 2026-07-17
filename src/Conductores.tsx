@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { descargarCSV } from "./exportUtils";
 import { CENTROS_COSTOS, TEMA } from "./constantes";
-import { calcularIncidencias, contarIncidenciasUnicas, CargaEnriquecida } from "./incidenciasUtils";
+import { calcularIncidencias, contarIncidenciasUnicas } from "./incidenciasUtils";
+import type { CargaEnriquecida } from "./incidenciasUtils";
 import logoBachoco from "./assets/bachoco-logo.png";
 
 type Props = {
@@ -96,7 +97,6 @@ function Conductores({ onVolver }: Props) {
   const toggleCeCo = (centro: string) => setFiltroCeCo(prev => prev.includes(centro) ? prev.filter(c => c !== centro) : [...prev, centro]);
   const ceCoFiltradosBusqueda = CENTROS_COSTOS.filter(c => c.toLowerCase().includes(busquedaCeCo.toLowerCase()));
 
-  // --- Agregación por Conductor ---
   const resumenPorConductor: FilaConductor[] = (() => {
     const mapa: Record<string, FilaConductor> = {};
 
@@ -151,7 +151,6 @@ function Conductores({ onVolver }: Props) {
     return filas;
   })();
 
-  // KPIs solo se calculan si queda EXACTAMENTE un conductor visible
   const unSoloConductor = resumenPorConductor.length === 1 ? resumenPorConductor[0] : null;
 
   const inputStyle = {
@@ -170,7 +169,6 @@ function Conductores({ onVolver }: Props) {
         <h1 style={{ margin: 0, fontSize: "20px", color: TEMA.textoPrincipal }}>Conductores</h1>
       </div>
 
-      {/* Filtros */}
       <div style={{ padding: "24px 32px", backgroundColor: TEMA.fondoTarjeta, borderBottom: `1px solid ${TEMA.borde}` }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "12px", alignItems: "end" }}>
           <div>
@@ -238,7 +236,6 @@ function Conductores({ onVolver }: Props) {
         </div>
       </div>
 
-      {/* KPIs — solo si hay un solo conductor filtrado */}
       <div style={{ padding: "24px 32px" }}>
         {!unSoloConductor ? (
           <div style={{ backgroundColor: TEMA.fondoTarjeta, borderRadius: "12px", padding: "24px", border: `1px solid ${TEMA.borde}`, textAlign: "center" }}>
@@ -286,7 +283,6 @@ function Conductores({ onVolver }: Props) {
         )}
       </div>
 
-      {/* Tabla resumen */}
       <div style={{ padding: "0 32px 32px" }}>
         {cargando ? <p style={{ color: TEMA.textoSecundario }}>Cargando datos...</p> : (
           <div style={{ backgroundColor: TEMA.fondoTarjeta, borderRadius: "12px", padding: "24px", border: `1px solid ${TEMA.borde}` }}>

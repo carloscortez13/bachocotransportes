@@ -6,7 +6,8 @@ import Conductores from "./Conductores";
 import Login from "./Login";
 import { descargarCSV } from "./exportUtils";
 import { CENTROS_COSTOS, PROVEEDORES, TEMA } from "./constantes";
-import { calcularIncidencias, CargaEnriquecida } from "./incidenciasUtils";
+import { calcularIncidencias } from "./incidenciasUtils";
+import type { CargaEnriquecida } from "./incidenciasUtils";
 import logoBachoco from "./assets/bachoco-logo.png";
 
 function App() {

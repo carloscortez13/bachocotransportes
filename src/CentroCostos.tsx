@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { descargarCSV } from "./exportUtils";
 import { CENTROS_COSTOS, TEMA } from "./constantes";
-import { calcularIncidencias, contarIncidenciasUnicas, CargaEnriquecida } from "./incidenciasUtils";
+import { calcularIncidencias, contarIncidenciasUnicas } from "./incidenciasUtils";
+import type { CargaEnriquecida } from "./incidenciasUtils";
 import logoBachoco from "./assets/bachoco-logo.png";
 
 type Props = {
@@ -98,7 +99,6 @@ function CentroCostos({ onVolver }: Props) {
   };
   const ceCoFiltradosBusqueda = CENTROS_COSTOS.filter(c => c.toLowerCase().includes(busquedaCeCo.toLowerCase()));
 
-  // --- Agregación por Centro de Costos ---
   const resumenPorCentro: FilaCentro[] = (() => {
     const mapa: Record<string, FilaCentro> = {};
 
@@ -170,7 +170,6 @@ function CentroCostos({ onVolver }: Props) {
         <h1 style={{ margin: 0, fontSize: "20px", color: TEMA.textoPrincipal }}>Centro de Costos</h1>
       </div>
 
-      {/* Filtros */}
       <div style={{ padding: "24px 32px", backgroundColor: TEMA.fondoTarjeta, borderBottom: `1px solid ${TEMA.borde}` }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "12px", alignItems: "end" }}>
           <div>
@@ -238,7 +237,6 @@ function CentroCostos({ onVolver }: Props) {
         </div>
       </div>
 
-      {/* KPIs */}
       <div style={{ padding: "24px 32px", display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "16px" }}>
         <div style={{ backgroundColor: TEMA.fondoTarjeta, borderRadius: "12px", padding: "20px", borderTop: `4px solid ${TEMA.naranja}` }}>
           <p style={{ color: TEMA.textoSecundario, margin: 0, fontSize: "14px" }}>Cargas OK</p>
@@ -266,7 +264,6 @@ function CentroCostos({ onVolver }: Props) {
         </div>
       </div>
 
-      {/* Tabla resumen */}
       <div style={{ padding: "0 32px 32px" }}>
         {cargando ? <p style={{ color: TEMA.textoSecundario }}>Cargando datos...</p> : (
           <div style={{ backgroundColor: TEMA.fondoTarjeta, borderRadius: "12px", padding: "24px", border: `1px solid ${TEMA.borde}` }}>
